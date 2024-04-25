@@ -117,75 +117,170 @@ namespace Bulat_NN_Kohonen
         }
         private static void CreateClusters(bool createAgain)
         {
-            CreateKNN(20);
-            if (createAgain)
+            //CreateKNN(20);
+            try
             {
-                try
+
+                Random[] r = new Random[countOfNumbers];
+                Random[] rand = new Random[countOfNumbers];
+                for (int k = 0; k < countOfNumbers; k++)
                 {
+                    r[k] = new Random();
+                    rand[k] = new Random();
 
-                    Random[] r = new Random[countOfNumbers];
-                    Random[] rand = new Random[countOfNumbers];
-                    for (int k = 0; k < countOfNumbers; k++)
+                    for (int i = 0; i < kohonenNeuralNetwork[k].maxClusters; i++)
                     {
-                        r[k] = new Random();
-                        rand[k] = new Random();
-
-                        for (int i = 0; i < kohonenNeuralNetwork[k].maxClusters; i++)
+                        for (int j = 0; j < kohonenNeuralNetwork[k].sizeOfVector; j++)
                         {
-                            for (int j = 0; j < kohonenNeuralNetwork[k].sizeOfVector; j++)
-                            {
-                                kohonenNeuralNetwork[k].w[i, j] = r[k].NextDouble();
-                            }
+                            kohonenNeuralNetwork[k].w[i, j] = r[k].NextDouble();
                         }
                     }
-                    for (int k = 0; k < countOfNumbers; k++)
-                    {
-                        double[,] pattern = new double[databaseForRecognition[k].countOfImagesForeachNumberTrain, kohonenNeuralNetwork[k].sizeOfVector];
-                        for (int i = 0; i < databaseForRecognition[k].countOfImagesForeachNumberTrain; i++)
-                        {
-                            for (int j = 0; j < kohonenNeuralNetwork[k].sizeOfVector; j++)
-                            {
-                                pattern[i, j] = databaseForRecognition[k].arrObj[i, j];
-                            }
-                        }
-
-                        kohonenNeuralNetwork[k].Training(pattern);
-
-                        string fileName = "BigCluster" + k.ToString() + ".txt";
-                        WritingClusterIntoFile(fileName, kohonenNeuralNetwork[k].w, kohonenNeuralNetwork[k].maxClusters);
-                    }
-                    Console.WriteLine("Clusters are built" + "\n");
                 }
-                catch (Exception ex)
+                for (int k = 6; k < countOfNumbers; k++)
                 {
-                    Console.WriteLine(ex.ToString());
-                    Console.WriteLine(ex.ToString());
+                    double[,] pattern = new double[databaseForRecognition[k].countOfImagesForeachNumberTrain, kohonenNeuralNetwork[k].sizeOfVector];
+                    for (int i = 0; i < databaseForRecognition[k].countOfImagesForeachNumberTrain; i++)
+                    {
+                        for (int j = 0; j < kohonenNeuralNetwork[k].sizeOfVector; j++)
+                        {
+                            pattern[i, j] = databaseForRecognition[k].arrObj[i, j];
+                        }
+                    }
+
+                    kohonenNeuralNetwork[k].Training(pattern);
+
+                    string fileName = "BigCluster" + k.ToString() + ".txt";
+                    WritingClusterIntoFile(fileName, kohonenNeuralNetwork[k].w, kohonenNeuralNetwork[k].maxClusters);
+                }
+                Console.WriteLine("Clusters are built" + "\n");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+                Console.WriteLine(ex.ToString());
+            }
+        }
+        private static void ReadClustersFromFile(string fileName, int k)
+        {
+            try
+            {
+                string[] s = File.ReadAllLines(fileName);
+
+                for (int i = 0; i < kohonenNeuralNetwork[k].maxClusters; i++)
+                {
+                    for (int j = 0; j < kohonenNeuralNetwork[k].sizeOfVector; j++)
+                    {
+                        kohonenNeuralNetwork[k].w[i, j] = Double.Parse(s[i * kohonenNeuralNetwork[k].sizeOfVector + j]);
+
+                    }
                 }
             }
-            else
+            catch (Exception ex)
             {
-                try
+                Console.WriteLine(ex.ToString());
+            }
+        }
+        private static void EvclidDistanceForAllClusters(int vectorNumber, double[,] t, int maxClusters, double[,] w, double[] d)
+        {
+            for (int i = 0; i < maxClusters; i++)
+            {
+                d[i] = 0.0;
+            }
+
+            for (int i = 0; i < maxClusters; i++)
+            {
+                for (int j = 0; j < height * width; j++)
                 {
-                    for (int k = 0; k < countOfNumbers; k++)
+                    d[i] += ((w[i, j] - t[vectorNumber, j])*(w[i, j] - t[vectorNumber, j]));
+                }
+            }
+        }
+        private static int MinDistance(double[] d, int maxClusters)
+        {
+            double min = d[0];
+            int cl = 0;
+            for (int i = 1; i < maxClusters; i++)
+            {
+                if (d[i] < min)
+                {
+                    min = d[i]; cl = i;
+                }
+            }
+            return cl;
+        }
+        private static void VerifyClusters(string fileName)
+        {
+            try
+            {
+                using (FileStream aFile = new FileStream(fileName, FileMode.OpenOrCreate))
+                {
+                    using (StreamWriter swr = new StreamWriter(aFile))
                     {
-                        string fileName = "Clusters" + k.ToString() + ".txt";
-                        string[] s = File.ReadAllLines(fileName);
+                        aFile.Seek(0, SeekOrigin.End);
 
-                        for (int i = 0; i < kohonenNeuralNetwork[k].maxClusters; i++)
+                        int[] countOfTrue = new int[countOfNumbers];
+                        int[,] fMera = new int[countOfNumbers, countOfNumbers];
+                        for (int k = 0; k < countOfNumbers; k++)
                         {
-                            for (int j = 0; j < kohonenNeuralNetwork[k].sizeOfVector; j++)
+                            countOfTrue[k] = 0;
+                            for (int h = 0; h < countOfNumbers; h++)
                             {
-                                kohonenNeuralNetwork[k].w[i, j] = Double.Parse(s[i * kohonenNeuralNetwork[k].sizeOfVector + j]);
+                                fMera[k, h] = 0;
+                            }
+                            double[,] test = new double[databaseForRecognition[k].countOfImagesForeachNumberTest, 
+                                                        kohonenNeuralNetwork[k].sizeOfVector];
+                            for (int i = 0; i < databaseForRecognition[k].countOfImagesForeachNumberTest; i++)
+                            {
+                                for (int j = 0; j < kohonenNeuralNetwork[k].sizeOfVector; j++)
+                                {
+                                    test[i, j] = databaseForRecognition[k].arrObjT[i, j];
+                                }
+                            }
+                            for (int vecNum = 0; vecNum < databaseForRecognition[k].countOfImagesForeachNumberTest; vecNum++)
+                            {
+                                double[] minDist = new double[countOfNumbers];
 
+                                for (int j = 0; j < countOfNumbers; j++)
+                                {
+                                    EvclidDistanceForAllClusters(vecNum, test, kohonenNeuralNetwork[j].maxClusters, kohonenNeuralNetwork[j].w, kohonenNeuralNetwork[j].d);
+                                    int cluster = MinDistance(kohonenNeuralNetwork[j].d, kohonenNeuralNetwork[j].maxClusters);
+                                    minDist[j] = kohonenNeuralNetwork[j].d[cluster];
+                                }
+
+                                double min = Double.MaxValue;
+                                int res = -1;
+                                for (int j = 0; j < countOfNumbers; j++)
+                                {
+                                    if (minDist[j] < min)
+                                    {
+                                        min = minDist[j];
+                                        res = j;
+                                    }
+                                }
+                                if (res == k) countOfTrue[k]++;
+                                fMera[k, res]++;
+                            }
+                            float procOfTrueClusters = ((float)countOfTrue[k] / databaseForRecognition[k].countOfImagesForeachNumberTest) * 100;
+                            Console.WriteLine(k.ToString(), procOfTrueClusters.ToString() + " %");
+                            //MessageBox.Show(countOfTrue[k].ToString());
+                        }
+                        for (int i = 0; i < countOfNumbers; i++)
+                        {
+                            for (int j = 0; j < countOfNumbers; j++)
+                            {
+
+                                swr.WriteLine(fMera[i, j]);
                             }
                         }
+                        swr.Close();
                     }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.ToString());
+                    Console.WriteLine("Clusters are checked");
                 }
 
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
             }
         }
         public static void WritingClusterIntoFile(string fileName, double[,] tempW, int maxClusterElement)
@@ -211,8 +306,14 @@ namespace Bulat_NN_Kohonen
             string labelFileTest = @"t10k-labels.idx1-ubyte";
 
             DownloadMNISTDatabase(pixelFileTrain,labelFileTrain,pixelFileTest,labelFileTest);
-            CreateClusters(true);
-
+            CreateKNN(20);
+            //CreateClusters(true);
+            for (int k = 0; k < countOfNumbers; k++)
+            {
+                string fileName = "BigCluster" + k.ToString() + ".txt";
+                ReadClustersFromFile(fileName,k);
+            }
+            VerifyClusters("VerifyKNN.txt");
             int a = 0;
         }
     }
